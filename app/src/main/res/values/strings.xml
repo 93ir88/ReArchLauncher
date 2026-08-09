@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">ReArchLauncher</string>
+    <string name="keybind_service_label">ReArch Keybinds</string>
+    <string name="keybind_service_description">Enables Hyprland-style global keyboard shortcuts and window management keybinds.</string>
+</resources>

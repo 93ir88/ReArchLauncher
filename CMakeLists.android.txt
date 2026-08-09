@@ -1,0 +1,187 @@
+cmake_minimum_required(VERSION 3.24)
+
+# ─── Version (bypass the git describe requirement from original CMakeLists) ─
+set(VERSION "1.0.0" CACHE STRING "App version")
+set(GIT_REVISION "android-port" CACHE STRING "Git revision")
+
+project(ReArchLauncher VERSION ${VERSION} LANGUAGES CXX)
+
+# ─── C++ standard ──────────────────────────────────────────────────────────
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+
+# ─── Android-specific setup ────────────────────────────────────────────────
+if(NOT ANDROID)
+    message(FATAL_ERROR "This CMakeLists.txt is for Android builds only.\n"
+            "Use the original caelestia/shell/CMakeLists.txt for Linux.")
+endif()
+
+# Qt 6 required components (subset — no DBus, no Wayland on Android)
+find_package(Qt6 REQUIRED COMPONENTS
+    Core Qml Gui Quick QuickControls2
+    Concurrent Sql Network
+    ShaderTools Multimedia  # Multimedia replaces PipeWire
+)
+qt_standard_project_setup(REQUIRES 6.8)
+
+set(QT_QML_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/qml")
+
+# ─── Source paths ──────────────────────────────────────────────────────────
+set(CAELESTIA_SRC "${CMAKE_SOURCE_DIR}/caelestia/shell")
+set(ANDROID_PLATFORM "${CMAKE_SOURCE_DIR}/android/platform")
+set(ANDROID_SHIMS "${CMAKE_SOURCE_DIR}/android-shims")
+
+# ─── Step 1: Apply patches to Caelestia source ────────────────────────────
+# Copy Caelestia source to build dir, then apply Android patches.
+# Original source tree is NEVER modified.
+
+file(COPY "${CAELESTIA_SRC}/"
+     DESTINATION "${CMAKE_BINARY_DIR}/caelestia-patched"
+     PATTERN ".git" EXCLUDE
+)
+
+# Replace Hypr.qml with AndroidHypr.qml (strips Wayland IPC)
+configure_file(
+    "${ANDROID_PLATFORM}/qml/AndroidHypr.qml"
+    "${CMAKE_BINARY_DIR}/caelestia-patched/services/Hypr.qml"
+    COPYONLY
+)
+
+# Backup original for reference
+configure_file(
+    "${CAELESTIA_SRC}/services/Hypr.qml"
+    "${CMAKE_BINARY_DIR}/caelestia-patched/services/Hypr.qml.linux"
+    COPYONLY
+)
+
+# ─── Step 2: Android platform bridge library ──────────────────────────────
+qt_add_library(rearch_android_bridge STATIC
+    "${ANDROID_PLATFORM}/src/AndroidWindowBridge.cpp"
+    "${ANDROID_PLATFORM}/src/AndroidWindowBridge.hpp"
+)
+
+target_include_directories(rearch_android_bridge PUBLIC
+    "${ANDROID_PLATFORM}/src"
+)
+
+target_link_libraries(rearch_android_bridge
+    Qt6::Core Qt6::Qml Qt6::Quick Qt6::Multimedia
+)
+
+# ─── Step 3: Android QML shim module (replaces Quickshell) ────────────────
+qt_add_qml_module(rearch_quickshell_shim
+    URI "Quickshell"
+    VERSION 1.0
+    QML_FILES
+        "${ANDROID_PLATFORM}/qml/Quickshell/Quickshell.qml"
+        "${ANDROID_PLATFORM}/qml/Quickshell/Hyprland/Hyprland.qml"
+    RESOURCE_PREFIX "/qt/qml"
+)
+
+qt_add_qml_module(rearch_android_bridge_qml
+    URI "com.rearch.android"
+    VERSION 1.0
+    SOURCES
+        "${ANDROID_PLATFORM}/src/AndroidWindowBridge.cpp"
+        "${ANDROID_PLATFORM}/src/AndroidWindowBridge.hpp"
+    RESOURCE_PREFIX "/qt/qml"
+)
+
+# ─── Step 4: Caelestia plugin (C++ QML plugin) ───────────────────────────
+# Build the plugin with Android shims replacing Linux-specific files.
+
+# Collect all plugin sources except the Linux-specific files we replace
+file(GLOB_RECURSE PLUGIN_SOURCES
+    "${CMAKE_BINARY_DIR}/caelestia-patched/plugin/src/*.cpp"
+    "${CMAKE_BINARY_DIR}/caelestia-patched/plugin/src/*.hpp"
+)
+
+# Exclude original Hypr IPC implementations (replaced by our shims)
+list(FILTER PLUGIN_SOURCES EXCLUDE REGEX "hyprdevices\\.cpp|hyprextras\\.cpp")
+
+# Add our Android shims instead
+list(APPEND PLUGIN_SOURCES
+    "${ANDROID_SHIMS}/Caelestia/Internal/android/hyprdevices_android.cpp"
+    "${ANDROID_SHIMS}/Caelestia/Internal/android/hyprextras_android.cpp"
+    "${ANDROID_SHIMS}/pipewire_android.cpp"
+)
+
+qt_add_qml_module(caelestia_plugin
+    URI "Caelestia"
+    VERSION 1.0
+    SOURCES ${PLUGIN_SOURCES}
+    QML_FILES
+        # Collect all Caelestia QML from patched source (components/, modules/, etc.)
+        # These are UNCHANGED from the original
+    RESOURCE_PREFIX "/qt/qml"
+)
+
+target_include_directories(caelestia_plugin PRIVATE
+    "${CMAKE_BINARY_DIR}/caelestia-patched/plugin/src"
+    "${ANDROID_SHIMS}/Caelestia/Internal/android"
+    "${ANDROID_SHIMS}"
+)
+
+target_link_libraries(caelestia_plugin
+    Qt6::Core Qt6::Qml Qt6::Quick Qt6::QuickControls2
+    Qt6::Concurrent Qt6::Sql Qt6::Network Qt6::Multimedia
+    rearch_android_bridge
+)
+
+# Compile-time flag: disable all Wayland/Hyprland IPC code paths
+target_compile_definitions(caelestia_plugin PRIVATE
+    ANDROID_BUILD=1
+    NO_PIPEWIRE=1
+    NO_DBUS=1
+    NO_WAYLAND=1
+    QT_NO_DBUS=1
+)
+
+# ─── Step 5: Collect all Caelestia QML files ─────────────────────────────
+file(GLOB_RECURSE CAELESTIA_QML_FILES
+    "${CMAKE_BINARY_DIR}/caelestia-patched/components/*.qml"
+    "${CMAKE_BINARY_DIR}/caelestia-patched/modules/*.qml"
+    "${CMAKE_BINARY_DIR}/caelestia-patched/services/*.qml"
+    "${CMAKE_BINARY_DIR}/caelestia-patched/utils/*.qml"
+)
+
+# ─── Step 6: Main Android application ─────────────────────────────────────
+qt_add_executable(ReArchLauncher
+    "${ANDROID_PLATFORM}/src/main.cpp"
+)
+
+qt_add_qml_module(ReArchLauncher
+    URI "rearch.main"
+    VERSION 1.0
+    QML_FILES
+        "${CMAKE_BINARY_DIR}/caelestia-patched/shell.qml"
+        ${CAELESTIA_QML_FILES}
+    RESOURCES
+        "${CAELESTIA_SRC}/assets/google-sans-flex/GoogleSansFlex-VariableFont_GRAD,ROND,opsz,slnt,wdth,wght.ttf"
+        "${CAELESTIA_SRC}/assets/wallpaper.webp"
+        "${CAELESTIA_SRC}/assets/bongocat.gif"
+        "${CAELESTIA_SRC}/assets/kurukuru.gif"
+        "${CAELESTIA_SRC}/assets/logo.svg"
+)
+
+target_link_libraries(ReArchLauncher PRIVATE
+    Qt6::Core Qt6::Qml Qt6::Quick Qt6::QuickControls2
+    caelestia_plugin
+    rearch_android_bridge
+    rearch_quickshell_shim
+    rearch_android_bridge_qml
+)
+
+# ─── Android deployment ───────────────────────────────────────────────────
+set_target_properties(ReArchLauncher PROPERTIES
+    QT_ANDROID_PACKAGE_SOURCE_DIR "${ANDROID_PLATFORM}"
+    QT_ANDROID_MIN_SDK_VERSION 29
+    QT_ANDROID_TARGET_SDK_VERSION 35
+    QT_ANDROID_VERSION_NAME "${VERSION}"
+    QT_ANDROID_ABIS "arm64-v8a;x86_64"
+)
+
+# Generate the APK
+qt_android_generate_deployment_settings(ReArchLauncher)
+qt_android_add_apk_target(ReArchLauncher)

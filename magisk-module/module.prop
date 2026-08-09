@@ -1,0 +1,7 @@
+id=rearch-freeform
+name=ReArch Freeform Support
+version=v1.0.0
+versionCode=1
+author=ReArchLauncher
+description=Enables Android freeform window mode and grants ReArchLauncher system permissions. Required for Hyprland-style windowing on Android.
+updateJson=https://raw.githubusercontent.com/YOUR_USER/ReArchLauncher/main/magisk-module/update.json
