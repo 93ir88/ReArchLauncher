@@ -78,7 +78,7 @@ qt_add_library(rearch_android_bridge STATIC
     "${ANDROID_PLAT}/src/AndroidWindowBridge.hpp"
 )
 target_include_directories(rearch_android_bridge PUBLIC "${ANDROID_PLAT}/src")
-target_link_libraries(rearch_android_bridge Qt6::Core Qt6::Qml Qt6::Quick Qt6::Multimedia)
+target_link_libraries(rearch_android_bridge PRIVATE Qt6::Core Qt6::Qml Qt6::Quick Qt6::Multimedia)
 
 # ─── Step 4: Bridge QML singleton module ──────────────────────────────────
 qt_alias_files(BRIDGE_QML_FILES "${STAGING}" "*.qml")  # AndroidHypr + anything at root
@@ -91,7 +91,7 @@ qt_add_qml_module(rearch_android_bridge_qml
         "${ANDROID_PLAT}/src/AndroidWindowBridge.hpp"
     RESOURCE_PREFIX "/qt/qml"
 )
-target_link_libraries(rearch_android_bridge_qml rearch_android_bridge)
+target_link_libraries(rearch_android_bridge_qml PRIVATE rearch_android_bridge)
 
 # ─── Step 5: Quickshell shim QML module ───────────────────────────────────
 qt_alias_files(QUICKSHELL_QML "${STAGING}/Quickshell" "*.qml")
@@ -129,7 +129,7 @@ target_include_directories(caelestia_plugin PRIVATE
     "${ANDROID_SHIMS}/Caelestia/Internal/android"
     "${ANDROID_SHIMS}"
 )
-target_link_libraries(caelestia_plugin
+target_link_libraries(caelestia_plugin PRIVATE
     Qt6::Core Qt6::Qml Qt6::Quick Qt6::QuickControls2
     Qt6::Concurrent Qt6::Sql Qt6::Network Qt6::Multimedia
     rearch_android_bridge
