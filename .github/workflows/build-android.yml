@@ -28,6 +28,26 @@ jobs:
           submodules: recursive
           fetch-depth: 0
 
+      # ── Ensure source trees exist (submodule init + fallback clone) ─────
+      - name: Init source trees
+        run: |
+          git submodule update --init --recursive --depth 1 2>/dev/null || true
+
+          if [ ! -f "caelestia/shell/CMakeLists.txt" ]; then
+            echo "caelestia/shell missing, cloning..."
+            rm -rf caelestia/shell
+            git clone --depth 1 https://github.com/caelestia-dots/shell.git caelestia/shell
+          fi
+
+          if [ ! -d "hyperland/Hyprland" ]; then
+            echo "hyperland/Hyprland missing, cloning..."
+            mkdir -p hyperland
+            git clone --depth 1 https://github.com/hyprwm/Hyprland.git hyperland/Hyprland
+          fi
+
+          echo "Sources ready:"
+          ls caelestia/shell | head -8
+
       # ── Java (required by Android SDK) ──────────────────────────────────
       - name: Set up JDK 17
         uses: actions/setup-java@v4

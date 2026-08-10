@@ -1,0 +1,9 @@
+[submodule "caelestia/shell"]
+	path = caelestia/shell
+	url = https://github.com/caelestia-dots/shell.git
+	branch = main
+
+[submodule "hyperland/Hyprland"]
+	path = hyperland/Hyprland
+	url = https://github.com/hyprwm/Hyprland.git
+	branch = main
