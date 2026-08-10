@@ -91,14 +91,23 @@ jobs:
       # ── Configure + Build ────────────────────────────────────────────────
       - name: Configure CMake (Android cross-compile)
         run: |
+          QT_ANDROID="${{ runner.temp }}/qt6-android/Qt/${{ env.QT_VERSION }}/android_arm64_v8a"
+          QT_HOST="${{ runner.temp }}/qt6-host/Qt/${{ env.QT_VERSION }}/gcc_64"
+
+          # NDK toolchain sets FIND_ROOT_PATH_MODE_PACKAGE=ONLY by default,
+          # which makes CMAKE_PREFIX_PATH invisible. We bypass this by:
+          #   1. Pointing Qt6_DIR directly at lib/cmake/Qt6
+          #   2. Setting FIND_ROOT_PATH_MODE_PACKAGE=BOTH
           cmake -S android-cmake -B build \
             -G Ninja \
             -DCMAKE_BUILD_TYPE=Release \
             -DCMAKE_TOOLCHAIN_FILE="${{ env.NDK_PATH }}/build/cmake/android.toolchain.cmake" \
             -DANDROID_ABI=${{ env.ANDROID_ABIS }} \
             -DANDROID_PLATFORM=android-${{ env.ANDROID_API }} \
-            -DQT_HOST_PATH="${{ runner.temp }}/qt6-host/Qt/${{ env.QT_VERSION }}/gcc_64" \
-            -DCMAKE_PREFIX_PATH="${{ runner.temp }}/qt6-android/Qt/${{ env.QT_VERSION }}/android_arm64_v8a" \
+            -DQT_HOST_PATH="$QT_HOST" \
+            -DQt6_DIR="$QT_ANDROID/lib/cmake/Qt6" \
+            -DCMAKE_FIND_ROOT_PATH="$QT_ANDROID" \
+            -DCMAKE_FIND_ROOT_PATH_MODE_PACKAGE=BOTH \
             -DANDROID_SDK_ROOT="$ANDROID_SDK_ROOT" \
             -DANDROID_NDK_ROOT="${{ env.NDK_PATH }}" \
             -DVERSION="$(git describe --tags --abbrev=0 2>/dev/null || echo '1.0.0')" \
