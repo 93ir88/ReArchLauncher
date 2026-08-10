@@ -11,7 +11,17 @@
 #ifdef Q_OS_ANDROID
 #include <QJniObject>
 #include <QJniEnvironment>
-#include <QtCore/private/qandroidextras_p.h>
+#ifdef Q_OS_ANDROID
+#include <QJniObject>
+#include <QJniEnvironment>
+#include <QCoreApplication>
+// Qt6 public Android context API (replaces QtAndroidPrivate)
+namespace QtAndroidCompat {
+    static inline QJniObject context() {
+        return QJniObject(QNativeInterface::QAndroidApplication::context());
+    }
+}
+#endif
 #endif
 
 AndroidWindowBridge* AndroidWindowBridge::s_instance = nullptr;
@@ -127,7 +137,7 @@ void AndroidWindowBridge::refreshAll() {
 QString AndroidWindowBridge::getEnv(const QString& name) const {
 #ifdef Q_OS_ANDROID
     // First check Android-specific overrides stored in SharedPreferences
-    QJniObject context = QtAndroidPrivate::androidContext();
+    QJniObject context = QtAndroidCompat::context();
     QJniObject prefs = context.callObjectMethod(
         "getSharedPreferences",
         "(Ljava/lang/String;I)Landroid/content/SharedPreferences;",
@@ -159,7 +169,7 @@ QString AndroidWindowBridge::getEnv(const QString& name) const {
 
 QString AndroidWindowBridge::filesDir() const {
 #ifdef Q_OS_ANDROID
-    QJniObject context = QtAndroidPrivate::androidContext();
+    QJniObject context = QtAndroidCompat::context();
     QJniObject filesDir = context.callObjectMethod<jobject>("getFilesDir");
     QJniObject path = filesDir.callObjectMethod<jstring>("getAbsolutePath");
     return path.toString();
@@ -197,7 +207,7 @@ void AndroidWindowBridge::runAsRoot(const QString& cmd) const {
 
 #ifdef Q_OS_ANDROID
 QJniObject AndroidWindowBridge::getSystemService(const QString& name) const {
-    QJniObject context = QtAndroidPrivate::androidContext();
+    QJniObject context = QtAndroidCompat::context();
     return context.callObjectMethod(
         "getSystemService",
         "(Ljava/lang/String;)Ljava/lang/Object;",

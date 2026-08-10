@@ -12,7 +12,17 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QJsonArray>
-#include <QtCore/private/qandroidextras_p.h>  // Qt 6 Android JNI helpers
+#ifdef Q_OS_ANDROID
+#include <QJniObject>
+#include <QJniEnvironment>
+#include <QCoreApplication>
+// Qt6 public Android context API (replaces QtAndroidPrivate)
+namespace QtAndroidCompat {
+    static inline QJniObject context() {
+        return QJniObject(QNativeInterface::QAndroidApplication::context());
+    }
+}
+#endif  // Qt 6 Android JNI helpers
 
 #ifdef Q_OS_ANDROID
 #include <QJniObject>
@@ -74,7 +84,7 @@ void HyprExtras::message(const QString& message) {
         emit workspaceChangeRequested(wsId);
     } else if (message.startsWith("killactive")) {
         // Close focused window via ActivityTaskManager (needs root)
-        QJniObject activity = QtAndroidPrivate::androidActivity();
+        QJniObject activity = QtAndroidCompat::context();
         // am force-stop handled by MagiskBridge in Kotlin layer
         emit killActiveRequested();
     } else if (message.startsWith("fullscreen")) {
@@ -101,7 +111,7 @@ void HyprExtras::refreshOptions() {
     // On Linux: re-reads hyprland.conf socket
     // On Android: re-reads SharedPreferences / DataStore
 #ifdef Q_OS_ANDROID
-    QJniObject context = QtAndroidPrivate::androidContext();
+    QJniObject context = QtAndroidCompat::context();
     if (context.isValid()) {
         // Could read Android Settings.Global here
         // For now just re-emit with current values

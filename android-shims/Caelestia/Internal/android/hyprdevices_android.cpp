@@ -119,7 +119,7 @@ void HyprDevices::refreshFromAndroid() {
 #ifdef Q_OS_ANDROID
     QJniEnvironment env;
     QJniObject inputManagerService = QJniObject::fromString("input");
-    QJniObject context = QtAndroidPrivate::androidContext();
+    QJniObject context = QtAndroidCompat::context();
 
     // InputManager.getInputDeviceIds()
     QJniObject inputManager = context.callObjectMethod(

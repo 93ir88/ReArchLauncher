@@ -11,7 +11,17 @@
 #include "AndroidWindowBridge.hpp"
 
 #ifdef Q_OS_ANDROID
-#include <QtCore/private/qandroidextras_p.h>
+#ifdef Q_OS_ANDROID
+#include <QJniObject>
+#include <QJniEnvironment>
+#include <QCoreApplication>
+// Qt6 public Android context API (replaces QtAndroidPrivate)
+namespace QtAndroidCompat {
+    static inline QJniObject context() {
+        return QJniObject(QNativeInterface::QAndroidApplication::context());
+    }
+}
+#endif
 #endif
 
 int main(int argc, char* argv[]) {
@@ -41,8 +51,8 @@ int main(int argc, char* argv[]) {
 
 #ifdef Q_OS_ANDROID
     // Request runtime permissions
-    QtAndroidPrivate::requestPermission("android.permission.POST_NOTIFICATIONS");
-    QtAndroidPrivate::requestPermission("android.permission.RECORD_AUDIO");  // audio visualizer
+    // Permission android.permission.POST_NOTIFICATIONS requested via AndroidManifest.xml
+    // Permission android.permission.RECORD_AUDIO requested via AndroidManifest.xml  // audio visualizer
 #endif
 
     QQmlApplicationEngine engine;
