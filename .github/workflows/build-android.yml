@@ -91,8 +91,7 @@ jobs:
       # ── Configure + Build ────────────────────────────────────────────────
       - name: Configure CMake (Android cross-compile)
         run: |
-          cmake -S . -B build \
-            -f CMakeLists.android.txt \
+          cmake -S android-cmake -B build \
             -G Ninja \
             -DCMAKE_BUILD_TYPE=Release \
             -DCMAKE_TOOLCHAIN_FILE="${{ env.NDK_PATH }}/build/cmake/android.toolchain.cmake" \
