@@ -41,6 +41,15 @@ file(COPY "${ANDROID_PLAT}/qml/AndroidHypr.qml"
 file(RENAME "${PATCHED}/services/AndroidHypr.qml"
             "${PATCHED}/services/Hypr.qml")
 
+# ─── Patch reserved-word QML ids ──────────────────────────────────────────
+# InputField.qml uses `id: char` — `char` is a reserved word in the QML JS
+# engine. Rename to `charEl` throughout. Original source untouched.
+file(READ "${PATCHED}/modules/lock/center/InputField.qml" _input_qml)
+string(REPLACE "id: char"     "id: charEl"  _input_qml "${_input_qml}")
+string(REPLACE "target: char" "target: charEl" _input_qml "${_input_qml}")
+string(REPLACE "char."        "charEl."     _input_qml "${_input_qml}")
+file(WRITE "${PATCHED}/modules/lock/center/InputField.qml" "${_input_qml}")
+
 # ─── Step 2: Stage all QML into CMAKE_CURRENT_BINARY_DIR so paths are local
 #    Qt6 qt_add_qml_module requires relative paths OR QT_RESOURCE_ALIAS.
 #    We copy everything to build/staging/ and compute relative aliases.
