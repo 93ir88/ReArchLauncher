@@ -146,11 +146,10 @@ qt_add_qml_module(caelestia_plugin
     RESOURCE_PREFIX "/qt/qml"
 )
 target_include_directories(caelestia_plugin PRIVATE
-    # Collect every subdirectory under plugin/src so generated files
-    # (qmltyperegistrations.cpp, moc_*.cpp) can find all headers
     ${_plugin_include_dirs}
     "${ANDROID_SHIMS}/Caelestia/Internal/android"
     "${ANDROID_SHIMS}"
+    "${ANDROID_SHIMS}/include"   # pipewire/, spa/, aubio/ stubs
 )
 target_link_libraries(caelestia_plugin PRIVATE
     Qt6::Core Qt6::Qml Qt6::Quick Qt6::QuickControls2
