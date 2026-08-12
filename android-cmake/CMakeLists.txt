@@ -50,6 +50,15 @@ string(REPLACE "target: char" "target: charEl" _input_qml "${_input_qml}")
 string(REPLACE "char."        "charEl."     _input_qml "${_input_qml}")
 file(WRITE "${PATCHED}/modules/lock/center/InputField.qml" "${_input_qml}")
 
+# ─── Patch audiocollector.hpp: jthread/stop_token → thread/atomic ─────────
+# moc autogen target doesn't always inherit CXX_STANDARD; patch as safety net.
+set(_ac_hpp "${PATCHED}/plugin/src/Caelestia/Services/audiocollector.hpp")
+file(READ "${_ac_hpp}" _ac)
+string(REPLACE "#include <stop_token>" "#include <atomic>" _ac "${_ac}")
+string(REPLACE "std::stop_token"  "std::atomic<bool>" _ac "${_ac}")
+string(REPLACE "std::jthread"     "std::thread"       _ac "${_ac}")
+file(WRITE "${_ac_hpp}" "${_ac}")
+
 # ─── Step 2: Stage all QML into CMAKE_CURRENT_BINARY_DIR so paths are local
 #    Qt6 qt_add_qml_module requires relative paths OR QT_RESOURCE_ALIAS.
 #    We copy everything to build/staging/ and compute relative aliases.
@@ -159,6 +168,13 @@ target_link_libraries(caelestia_plugin PRIVATE
 target_compile_definitions(caelestia_plugin PRIVATE
     ANDROID_BUILD=1 NO_PIPEWIRE=1 NO_DBUS=1 NO_WAYLAND=1 QT_NO_DBUS=1
 )
+# Force C++20 explicitly — autogen/moc targets don't always inherit CMAKE_CXX_STANDARD
+set_target_properties(caelestia_plugin PROPERTIES
+    CXX_STANDARD 20
+    CXX_STANDARD_REQUIRED ON
+    CXX_EXTENSIONS OFF
+)
+target_compile_options(caelestia_plugin PRIVATE -std=c++20)
 
 # ─── Step 7: Main executable ───────────────────────────────────────────────
 qt_add_executable(ReArchLauncher "${ANDROID_PLAT}/src/main.cpp")
