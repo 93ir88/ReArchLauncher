@@ -113,6 +113,18 @@ qt_add_qml_module(rearch_quickshell_shim
 )
 
 # ─── Step 6: Caelestia C++ plugin ─────────────────────────────────────────
+# Collect ALL plugin subdirectories for include_directories
+# (needed by generated qmltyperegistrations.cpp and moc files)
+file(GLOB_RECURSE _plugin_headers
+    "${PATCHED}/plugin/src/*.hpp"
+    "${PATCHED}/plugin/src/*.h"
+)
+set(_plugin_include_dirs "${PATCHED}/plugin/src")
+foreach(_h ${_plugin_headers})
+    get_filename_component(_d "${_h}" DIRECTORY)
+    list(APPEND _plugin_include_dirs "${_d}")
+endforeach()
+list(REMOVE_DUPLICATES _plugin_include_dirs)
 file(GLOB_RECURSE PLUGIN_SOURCES
     "${PATCHED}/plugin/src/*.cpp"
     "${PATCHED}/plugin/src/*.hpp"
@@ -134,7 +146,9 @@ qt_add_qml_module(caelestia_plugin
     RESOURCE_PREFIX "/qt/qml"
 )
 target_include_directories(caelestia_plugin PRIVATE
-    "${PATCHED}/plugin/src"
+    # Collect every subdirectory under plugin/src so generated files
+    # (qmltyperegistrations.cpp, moc_*.cpp) can find all headers
+    ${_plugin_include_dirs}
     "${ANDROID_SHIMS}/Caelestia/Internal/android"
     "${ANDROID_SHIMS}"
 )
